@@ -51,3 +51,24 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`API rodando na porta ${PORT}`);
 });
+
+// Endpoint criar novo usuário
+app.post("/usuarios/create", (req, res) => {
+    const { nome, email, user, password } = req.body;
+
+    if (!nome || !email || !user || !password) {
+        return res.status(400).json({ erro: "Campos obrigatórios faltando" });
+    }
+
+    db.run(
+        "INSERT INTO usuarios (nome, email, user, password) VALUES (?, ?, ?, ?)",
+        [nome, email, user, password],
+        function(err) {
+            if (err) {
+                return res.status(500).json({ erro: "Erro ao cadastrar usuário" });
+            }
+            return res.json({ id: this.lastID, nome, email, user });
+        }
+    );
+});
+
