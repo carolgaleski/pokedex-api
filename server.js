@@ -128,6 +128,32 @@ app.post("/pokemon/create", (req, res) => {
     );
 });
 
+// edpoint para listar pokemon 
+app.get("/pokemon/listar", (req, res) => {
+    const { usuario } = req.query;
+
+    if (!usuario) {
+        return res.status(400).json({ erro: "Usuário não informado" });
+    }
+
+    db.all(
+        "SELECT id, nome, tipo, habilidades FROM pokemon WHERE usuario = ?",
+        [usuario],
+        (err, rows) => {
+            if (err) return res.status(500).json({ erro: "Erro no servidor" });
+
+            // transforma habilidades "a,b,c" em array
+            const lista = rows.map(p => ({
+                ...p,
+                habilidades: p.habilidades.split(",")
+            }));
+
+            return res.json(lista);
+        }
+    );
+});
+
+
     // Porta obrigatória para o Render
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
