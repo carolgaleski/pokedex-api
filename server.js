@@ -134,22 +134,26 @@ app.post("/pokemon/create", (req, res) => {
     });
 });
 
+// lista todos os pokemons para todos os usuários 
 app.get("/pokemon/listar", (req, res) => {
     const { usuario } = req.query;
 
-    if (!usuario) return res.status(400).json({ erro: "Usuário não informado" });
+    let sql = "SELECT id, nome, tipo, habilidades FROM pokemon";
+    const params = [];
 
-    db.all(
-        "SELECT id, nome, tipo, habilidades FROM pokemon WHERE usuario = ?",
-        [usuario],
-        (err, rows) => {
-            if (err) return res.status(500).json({ erro: "Erro no servidor" });
+    if (usuario) {
+        sql += " WHERE usuario = ?";
+        params.push(usuario);
+    }
 
-            const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
-            return res.json(lista);
-        }
-    );
+    db.all(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ erro: "Erro no servidor" });
+
+        const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
+        return res.json(lista);
+    });
 });
+
 
 app.get("/pokemon/pesquisarHabilidade", (req, res) => {
     const { usuario, habilidade } = req.query;
