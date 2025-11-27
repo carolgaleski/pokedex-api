@@ -132,9 +132,12 @@ app.post("/pokemon/create", (req, res) => {
 });
 
 app.get("/pokemon/listar", (req, res) => {
-    const sql = "SELECT id, nome, tipo, habilidades, usuario FROM pokemon";
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ erro: "Parâmetro 'usuario' é obrigatório" });
 
-    db.all(sql, [], (err, rows) => {
+    const sql = "SELECT id, nome, tipo, habilidades, usuario FROM pokemon WHERE usuario = ?";
+
+    db.all(sql, [usuario], (err, rows) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
 
         const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
@@ -143,17 +146,17 @@ app.get("/pokemon/listar", (req, res) => {
 });
 
 app.get("/pokemon/pesquisarHabilidade", (req, res) => {
-    const { habilidade } = req.query;
-    if (!habilidade) return res.status(400).json({ erro: "Parâmetros faltando" });
+    const { usuario, habilidade } = req.query;
+    if (!usuario || !habilidade) return res.status(400).json({ erro: "Parâmetros 'usuario' e 'habilidade' são obrigatórios" });
 
     const sql = `
         SELECT id, nome, tipo, habilidades, usuario
         FROM pokemon
-        WHERE habilidades LIKE ?
+        WHERE usuario = ? AND habilidades LIKE ?
     `;
     const habLike = `%${habilidade}%`;
 
-   db.all(sql, [usuario, habLike], (err, rows) => {
+    db.all(sql, [usuario, habLike], (err, rows) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
 
         const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
@@ -163,7 +166,7 @@ app.get("/pokemon/pesquisarHabilidade", (req, res) => {
 
 app.get("/pokemon/pesquisarTipo", (req, res) => {
     const { usuario, tipo } = req.query;
-    if (!usuario || !tipo) return res.status(400).json({ erro: "Parâmetros faltando" });
+    if (!usuario || !tipo) return res.status(400).json({ erro: "Parâmetros 'usuario' e 'tipo' são obrigatórios" });
 
     const sql = `
         SELECT id, nome, tipo, habilidades, usuario
@@ -181,32 +184,32 @@ app.get("/pokemon/pesquisarTipo", (req, res) => {
 });
 
 app.put("/pokemon/editar", (req, res) => {
-    const { id, nome, tipo, habilidades } = req.body;
+    const { id, nome, tipo, habilidades, usuario } = req.body;
 
-    if (!id || !nome || !tipo || !habilidades) {
+    if (!id || !nome || !tipo || !habilidades || !usuario) {
         return res.status(400).json({ erro: "Campos obrigatórios faltando" });
     }
 
     const habilidadesStr = Array.isArray(habilidades) ? habilidades.join(",") : habilidades;
 
     db.run(
-        "UPDATE pokemon SET nome = ?, tipo = ?, habilidades = ? WHERE id = ?",
-        [nome, tipo, habilidadesStr, id],
+        "UPDATE pokemon SET nome = ?, tipo = ?, habilidades = ? WHERE id = ? AND usuario = ?",
+        [nome, tipo, habilidadesStr, id, usuario],
         function(err) {
             if (err) return res.status(500).json({ erro: "Erro ao atualizar Pokémon" });
-            if (this.changes === 0) return res.status(404).json({ erro: "Pokémon não encontrado" });
+            if (this.changes === 0) return res.status(404).json({ erro: "Pokémon não encontrado para este usuário" });
             return res.json({ sucesso: true, mensagem: "Pokémon atualizado com sucesso" });
         }
     );
 });
 
 app.delete("/pokemon/excluir", (req, res) => {
-    const { id } = req.query;
-    if (!id) return res.status(400).json({ erro: "ID do Pokémon é obrigatório" });
+    const { id, usuario } = req.query;
+    if (!id || !usuario) return res.status(400).json({ erro: "Parâmetros 'id' e 'usuario' são obrigatórios" });
 
-    db.run("DELETE FROM pokemon WHERE id = ?", [id], function(err) {
+    db.run("DELETE FROM pokemon WHERE id = ? AND usuario = ?", [id, usuario], function(err) {
         if (err) return res.status(500).json({ erro: "Erro ao excluir Pokémon" });
-        if (this.changes === 0) return res.status(404).json({ erro: "Pokémon não encontrado" });
+        if (this.changes === 0) return res.status(404).json({ erro: "Pokémon não encontrado para este usuário" });
         return res.json({ sucesso: true, mensagem: "Pokémon excluído com sucesso" });
     });
 });
