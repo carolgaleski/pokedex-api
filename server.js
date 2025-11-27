@@ -21,12 +21,18 @@ db.serialize(() => {
         )
     `);
 
-    db.run(`INSERT OR IGNORE INTO usuarios (nome, email, user, password)
-            VALUES ('Carol Galeski', 'carol@email.com', 'carol', '123')`);
-    db.run(`INSERT OR IGNORE INTO usuarios (nome, email, user, password)
-            VALUES ('Maria da Silva', 'maria@email.com', 'maria', '123')`);
-    db.run(`INSERT OR IGNORE INTO usuarios (nome, email, user, password)
-            VALUES ('Carlos Santos', 'carlos@email.com', 'carlos', '123')`);
+    const usuariosIniciais = [
+        { nome: 'Carol Galeski', email: 'carol@email.com', user: 'carol', password: '123' },
+        { nome: 'Maria da Silva', email: 'maria@email.com', user: 'maria', password: '123' },
+        { nome: 'Carlos Santos', email: 'carlos@email.com', user: 'carlos', password: '123' }
+    ];
+
+    usuariosIniciais.forEach(u => {
+        db.run(
+            "INSERT OR IGNORE INTO usuarios (nome, email, user, password) VALUES (?, ?, ?, ?)",
+            [u.nome, u.email, u.user, u.password]
+        );
+    });
 
     db.run(`
         CREATE TABLE IF NOT EXISTS pokemon (
@@ -39,7 +45,7 @@ db.serialize(() => {
         )
     `);
 
-    const pokemons = [
+    const pokemonsIniciais = [
         { nome: 'Pikachu', tipo: 'Elétrico', habilidades: 'Choque,Trovão,Velocidade' },
         { nome: 'Charmander', tipo: 'Fogo', habilidades: 'Brasa,Lança Chamas,Escudo de Fogo' },
         { nome: 'Squirtle', tipo: 'Água', habilidades: 'Jato de Água,Bolha,Mergulho' },
@@ -52,17 +58,16 @@ db.serialize(() => {
         { nome: 'Vulpix', tipo: 'Fogo', habilidades: 'Chama,Nevada,Ilusão' }
     ];
 
-    const usuarios = ['carol', 'maria', 'carlos'];
-
-    usuarios.forEach(usuario => {
-        pokemons.forEach(p => {
+    usuariosIniciais.forEach(u => {
+        pokemonsIniciais.forEach(p => {
             db.run(
                 "INSERT OR IGNORE INTO pokemon (nome, tipo, habilidades, usuario) VALUES (?, ?, ?, ?)",
-                [p.nome, p.tipo, p.habilidades, usuario]
+                [p.nome, p.tipo, p.habilidades, u.user]
             );
         });
     });
 });
+
 
 app.post("/usuarios/auth", (req, res) => {
     const { user, password } = req.body;
@@ -92,11 +97,31 @@ app.post("/usuarios/create", (req, res) => {
             if (err) {
                 return res.status(500).json({ erro: "Erro ao cadastrar usuário" });
             }
+
+            const pokemonsIniciais = [
+                { nome: 'Pikachu', tipo: 'Elétrico', habilidades: 'Choque,Trovão,Velocidade' },
+                { nome: 'Charmander', tipo: 'Fogo', habilidades: 'Brasa,Lança Chamas,Escudo de Fogo' },
+                { nome: 'Squirtle', tipo: 'Água', habilidades: 'Jato de Água,Bolha,Mergulho' },
+                { nome: 'Bulbasaur', tipo: 'Planta', habilidades: 'Folha Navalha,Semente,Raio Solar' },
+                { nome: 'Jigglypuff', tipo: 'Normal', habilidades: 'Canto,Sonífero,Dormir' },
+                { nome: 'Gengar', tipo: 'Fantasma', habilidades: 'Sombra,Venenoso,Teletransporte' },
+                { nome: 'Onix', tipo: 'Pedra', habilidades: 'Rochadura,Impacto,Fortaleza' },
+                { nome: 'Alakazam', tipo: 'Psíquico', habilidades: 'Telecinese,Confusão,Previsão' },
+                { nome: 'Snorlax', tipo: 'Normal', habilidades: 'Descanso,Comer,Soneca' },
+                { nome: 'Vulpix', tipo: 'Fogo', habilidades: 'Chama,Nevada,Ilusão' }
+            ];
+
+            pokemonsIniciais.forEach(p => {
+                db.run(
+                    "INSERT OR IGNORE INTO pokemon (nome, tipo, habilidades, usuario) VALUES (?, ?, ?, ?)",
+                    [p.nome, p.tipo, p.habilidades, user]
+                );
+            });
+
             return res.json({ id: this.lastID, nome, email, user });
         }
     );
 });
-
 
 app.post("/pokemon/create", (req, res) => {
     const { nome, tipo, habilidades, usuario } = req.body;
@@ -105,7 +130,7 @@ app.post("/pokemon/create", (req, res) => {
         return res.status(400).json({ erro: "Campos obrigatórios faltando" });
     }
 
-    // verificar duplicidade pelo nome
+    // verificar duplicidade para o mesmo usuário
     db.get(
         "SELECT * FROM pokemon WHERE nome = ? AND usuario = ?",
         [nome, usuario],
@@ -115,20 +140,21 @@ app.post("/pokemon/create", (req, res) => {
 
             const habilidadesStr = Array.isArray(habilidades) ? habilidades.join(",") : habilidades;
 
-        db.run(
-            "INSERT INTO pokemon (nome, tipo, habilidades, usuario) VALUES (?, ?, ?, ?)",
-            [nome, tipo, habilidadesStr, usuario],
-            function(err) {
-                if (err) return res.status(500).json({ erro: "Erro ao cadastrar Pokémon" });
+            db.run(
+                "INSERT INTO pokemon (nome, tipo, habilidades, usuario) VALUES (?, ?, ?, ?)",
+                [nome, tipo, habilidadesStr, usuario],
+                function(err) {
+                    if (err) return res.status(500).json({ erro: "Erro ao cadastrar Pokémon" });
 
-                return res.json({
-                    sucesso: true,
-                    id: this.lastID,
-                    mensagem: "Pokémon cadastrado com sucesso"
-                });
-            }
-        );
-    });
+                    return res.json({
+                        sucesso: true,
+                        id: this.lastID,
+                        mensagem: "Pokémon cadastrado com sucesso"
+                    });
+                }
+            );
+        }
+    );
 });
 
 app.get("/pokemon/listar", (req, res) => {
@@ -203,6 +229,7 @@ app.put("/pokemon/editar", (req, res) => {
     );
 });
 
+
 app.delete("/pokemon/excluir", (req, res) => {
     const { id, usuario } = req.query;
     if (!id || !usuario) return res.status(400).json({ erro: "Parâmetros 'id' e 'usuario' são obrigatórios" });
@@ -214,6 +241,6 @@ app.delete("/pokemon/excluir", (req, res) => {
     });
 });
 
-// porta para o render
+// porta do render
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
