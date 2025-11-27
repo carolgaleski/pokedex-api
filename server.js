@@ -63,7 +63,6 @@ db.serialize(() => {
     });
 });
 
-
 app.post("/usuarios/auth", (req, res) => {
     const { user, password } = req.body;
 
@@ -77,7 +76,6 @@ app.post("/usuarios/auth", (req, res) => {
         }
     );
 });
-
 
 app.post("/usuarios/create", (req, res) => {
     const { nome, email, user, password } = req.body;
@@ -99,7 +97,6 @@ app.post("/usuarios/create", (req, res) => {
 });
 
 
-
 app.post("/pokemon/create", (req, res) => {
     const { nome, tipo, habilidades, usuario } = req.body;
 
@@ -107,15 +104,11 @@ app.post("/pokemon/create", (req, res) => {
         return res.status(400).json({ erro: "Campos obrigatórios faltando" });
     }
 
-    // verificar duplicidade
+    // verificar duplicidade pelo nome
     db.get("SELECT * FROM pokemon WHERE nome = ?", [nome], (err, row) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
+        if (row) return res.status(409).json({ erro: "Já existe um Pokémon cadastrado com esse nome" });
 
-        if (row) {
-            return res.status(409).json({ erro: "Já existe um Pokémon cadastrado com esse nome" });
-        }
-
-        // converte array em string
         const habilidadesStr = Array.isArray(habilidades) ? habilidades.join(",") : habilidades;
 
         db.run(
@@ -134,72 +127,54 @@ app.post("/pokemon/create", (req, res) => {
     });
 });
 
-// lista todos os pokemons para todos os usuários 
 app.get("/pokemon/listar", (req, res) => {
-    const { usuario } = req.query;
+    const sql = "SELECT id, nome, tipo, habilidades, usuario FROM pokemon";
 
-    let sql = "SELECT id, nome, tipo, habilidades FROM pokemon";
-    const params = [];
-
-    if (usuario) {
-        sql += " WHERE usuario = ?";
-        params.push(usuario);
-    }
-
-    db.all(sql, params, (err, rows) => {
+    db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
 
         const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
         return res.json(lista);
     });
 });
-
 
 app.get("/pokemon/pesquisarHabilidade", (req, res) => {
-    const { usuario, habilidade } = req.query;
-
-    if (!usuario || !habilidade) return res.status(400).json({ erro: "Parâmetros faltando" });
+    const { habilidade } = req.query;
+    if (!habilidade) return res.status(400).json({ erro: "Parâmetros faltando" });
 
     const sql = `
-        SELECT id, nome, tipo, habilidades
+        SELECT id, nome, tipo, habilidades, usuario
         FROM pokemon
-        WHERE usuario = ?
-        AND habilidades LIKE ?
+        WHERE habilidades LIKE ?
     `;
-
     const habLike = `%${habilidade}%`;
 
-    db.all(sql, [usuario, habLike], (err, rows) => {
+    db.all(sql, [habLike], (err, rows) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
 
         const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
         return res.json(lista);
     });
 });
-
 
 app.get("/pokemon/pesquisarTipo", (req, res) => {
-    const { usuario, tipo } = req.query;
-
-    if (!usuario || !tipo) return res.status(400).json({ erro: "Parâmetros faltando" });
+    const { tipo } = req.query;
+    if (!tipo) return res.status(400).json({ erro: "Parâmetros faltando" });
 
     const sql = `
-        SELECT id, nome, tipo, habilidades
+        SELECT id, nome, tipo, habilidades, usuario
         FROM pokemon
-        WHERE usuario = ?
-        AND tipo LIKE ?
+        WHERE tipo LIKE ?
     `;
-
     const tipoLike = `%${tipo}%`;
 
-    db.all(sql, [usuario, tipoLike], (err, rows) => {
+    db.all(sql, [tipoLike], (err, rows) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
 
         const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
         return res.json(lista);
     });
 });
-
 
 app.put("/pokemon/editar", (req, res) => {
     const { id, nome, tipo, habilidades } = req.body;
@@ -215,9 +190,7 @@ app.put("/pokemon/editar", (req, res) => {
         [nome, tipo, habilidadesStr, id],
         function(err) {
             if (err) return res.status(500).json({ erro: "Erro ao atualizar Pokémon" });
-
             if (this.changes === 0) return res.status(404).json({ erro: "Pokémon não encontrado" });
-
             return res.json({ sucesso: true, mensagem: "Pokémon atualizado com sucesso" });
         }
     );
@@ -225,18 +198,15 @@ app.put("/pokemon/editar", (req, res) => {
 
 app.delete("/pokemon/excluir", (req, res) => {
     const { id } = req.query;
-
     if (!id) return res.status(400).json({ erro: "ID do Pokémon é obrigatório" });
 
     db.run("DELETE FROM pokemon WHERE id = ?", [id], function(err) {
         if (err) return res.status(500).json({ erro: "Erro ao excluir Pokémon" });
-
         if (this.changes === 0) return res.status(404).json({ erro: "Pokémon não encontrado" });
-
         return res.json({ sucesso: true, mensagem: "Pokémon excluído com sucesso" });
     });
 });
 
-// porta obrigatória para render
+// porta para o render
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
