@@ -34,7 +34,8 @@ db.serialize(() => {
             nome TEXT NOT NULL,
             tipo TEXT NOT NULL,
             habilidades TEXT NOT NULL,
-            usuario TEXT NOT NULL
+            usuario TEXT NOT NULL,
+            UNIQUE(nome, usuario)
         )
     `);
 
@@ -105,11 +106,14 @@ app.post("/pokemon/create", (req, res) => {
     }
 
     // verificar duplicidade pelo nome
-    db.get("SELECT * FROM pokemon WHERE nome = ?", [nome], (err, row) => {
-        if (err) return res.status(500).json({ erro: "Erro no servidor" });
-        if (row) return res.status(409).json({ erro: "Já existe um Pokémon cadastrado com esse nome" });
+    db.get(
+        "SELECT * FROM pokemon WHERE nome = ? AND usuario = ?",
+        [nome, usuario],
+        (err, row) => {
+            if (err) return res.status(500).json({ erro: "Erro no servidor" });
+            if (row) return res.status(409).json({ erro: "Já existe um Pokémon cadastrado com esse nome para este usuário" });
 
-        const habilidadesStr = Array.isArray(habilidades) ? habilidades.join(",") : habilidades;
+            const habilidadesStr = Array.isArray(habilidades) ? habilidades.join(",") : habilidades;
 
         db.run(
             "INSERT INTO pokemon (nome, tipo, habilidades, usuario) VALUES (?, ?, ?, ?)",
@@ -149,7 +153,7 @@ app.get("/pokemon/pesquisarHabilidade", (req, res) => {
     `;
     const habLike = `%${habilidade}%`;
 
-    db.all(sql, [habLike], (err, rows) => {
+   db.all(sql, [usuario, habLike], (err, rows) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
 
         const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
@@ -158,17 +162,17 @@ app.get("/pokemon/pesquisarHabilidade", (req, res) => {
 });
 
 app.get("/pokemon/pesquisarTipo", (req, res) => {
-    const { tipo } = req.query;
-    if (!tipo) return res.status(400).json({ erro: "Parâmetros faltando" });
+    const { usuario, tipo } = req.query;
+    if (!usuario || !tipo) return res.status(400).json({ erro: "Parâmetros faltando" });
 
     const sql = `
         SELECT id, nome, tipo, habilidades, usuario
         FROM pokemon
-        WHERE tipo LIKE ?
+        WHERE usuario = ? AND tipo LIKE ?
     `;
     const tipoLike = `%${tipo}%`;
 
-    db.all(sql, [tipoLike], (err, rows) => {
+    db.all(sql, [usuario, tipoLike], (err, rows) => {
         if (err) return res.status(500).json({ erro: "Erro no servidor" });
 
         const lista = rows.map(p => ({ ...p, habilidades: p.habilidades.split(",") }));
