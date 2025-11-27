@@ -31,7 +31,7 @@ db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS pokemon (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL UNIQUE,
+            nome TEXT NOT NULL,
             tipo TEXT NOT NULL,
             habilidades TEXT NOT NULL,
             usuario TEXT NOT NULL
