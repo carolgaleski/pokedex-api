@@ -171,10 +171,17 @@ app.put("/pokemon/editar", (req, res) => {
         function(err) {
             if (err) return res.status(500).json({ erro: "Erro ao atualizar Pokémon" });
             if (this.changes === 0) return res.status(404).json({ erro: "Pokémon não encontrado" });
-            return res.json({ sucesso: true, mensagem: "Pokémon atualizado com sucesso" });
+
+            // pegar o pokemon atualizado com o usuario_criador
+            db.get("SELECT id, nome, tipo, habilidades, usuario_criador FROM pokemon WHERE id = ?", [id], (err2, row) => {
+                if (err2) return res.status(500).json({ erro: "Erro ao buscar Pokémon atualizado" });
+                row.habilidades = row.habilidades.split(",");
+                return res.json({ sucesso: true, pokemon: row, mensagem: "Pokémon atualizado com sucesso" });
+            });
         }
     );
 });
+
 
 app.delete("/pokemon/excluir", (req, res) => {
     const { id } = req.query;
