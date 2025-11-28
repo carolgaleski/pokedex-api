@@ -60,7 +60,7 @@ db.serialize(() => {
     pokemonsIniciais.forEach(p => {
         db.run(
             "INSERT OR IGNORE INTO pokemon (nome, tipo, habilidades, usuario_criador) VALUES (?, ?, ?, ?)",
-            [p.nome, p.tipo, p.habilidades, 'inicial']
+            [p.nome, p.tipo, p.habilidades, 'api']
         );
     });
 });
